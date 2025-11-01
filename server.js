@@ -1,10 +1,9 @@
 import express from "express";
 const app = express();
 
-// Read raw body manually to handle weird JSON streams
+// Read raw body manually to handle GHL's weird JSON streams
 app.use(express.text({ type: "*/*", limit: "10mb" }));
 
-// Helper: check if dateAdded is within last 30 days
 function isWithinLast30Days(dateString) {
   if (!dateString) return false;
   const parsed = new Date(dateString);
@@ -32,18 +31,16 @@ app.post("/filter-contacts", (req, res) => {
 
     const contacts = JSON.parse(body);
     if (!Array.isArray(contacts)) {
-      return res.status(400).json({ error: "Expected an array or multiple JSON objects" });
+      return res.status(400).send("0");
     }
 
-    // Filter only contacts added in the last 30 days
     const recentContacts = contacts.filter(c => isWithinLast30Days(c.dateAdded));
 
-    // ✅ Only return the count
-    return res.json({ count: recentContacts.length });
-
+    // ✅ Return only the number
+    res.type("text/plain").send(String(recentContacts.length));
   } catch (err) {
     console.error("❌ JSON parsing error:", err.message);
-    return res.status(400).json({ error: "Invalid or malformed JSON input" });
+    res.type("text/plain").status(400).send("0");
   }
 });
 
