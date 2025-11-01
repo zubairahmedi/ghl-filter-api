@@ -1,8 +1,9 @@
 import express from "express";
 const app = express();
-app.use(express.json());
 
-// Utility: check if a date is within last 30 days
+// We'll read the raw body manually
+app.use(express.text({ type: "*/*", limit: "10mb" }));
+
 function isWithinLast30Days(dateString) {
   if (!dateString) return false;
   const parsed = new Date(dateString);
@@ -11,19 +12,39 @@ function isWithinLast30Days(dateString) {
   const now = new Date();
   const thirtyDaysAgo = new Date(now);
   thirtyDaysAgo.setDate(now.getDate() - 30);
-
   return parsed >= thirtyDaysAgo && parsed <= now;
 }
 
-// POST endpoint
 app.post("/filter-contacts", (req, res) => {
-  const contacts = req.body;
-  if (!Array.isArray(contacts)) {
-    return res.status(400).json({ error: "Expected an array of contacts" });
-  }
+  try {
+    let body = req.body.trim();
 
-  const recentContacts = contacts.filter(c => isWithinLast30Days(c.dateAdded));
-  res.json({ count: recentContacts.length, contacts: recentContacts });
+    // If it's a single object, just parse normally
+    if (body.startsWith("{") && body.endsWith("}") && !body.includes("}{")) {
+      body = `[${body}]`;
+    }
+
+    // If it's multiple concatenated objects {...}{...}{...}
+    // Split between }{ and rebuild as JSON array
+    if (body.includes("}{")) {
+      body = "[" + body.replace(/}\s*{/g, "},{") + "]";
+    }
+
+    const contacts = JSON.parse(body);
+    if (!Array.isArray(contacts)) {
+      return res.status(400).json({ error: "Expected an array or multiple JSON objects" });
+    }
+
+    const recentContacts = contacts.filter(c => isWithinLast30Days(c.dateAdded));
+
+    return res.json({
+      count: recentContacts.length,
+      contacts: recentContacts,
+    });
+  } catch (err) {
+    console.error("❌ JSON parsing error:", err.message);
+    return res.status(400).json({ error: "Invalid or malformed JSON input" });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
