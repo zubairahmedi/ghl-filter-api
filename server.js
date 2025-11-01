@@ -1,9 +1,10 @@
 import express from "express";
 const app = express();
 
-// We'll read the raw body manually
+// Read raw body manually to handle weird JSON streams
 app.use(express.text({ type: "*/*", limit: "10mb" }));
 
+// Helper: check if dateAdded is within last 30 days
 function isWithinLast30Days(dateString) {
   if (!dateString) return false;
   const parsed = new Date(dateString);
@@ -19,13 +20,12 @@ app.post("/filter-contacts", (req, res) => {
   try {
     let body = req.body.trim();
 
-    // If it's a single object, just parse normally
+    // Convert single object → array
     if (body.startsWith("{") && body.endsWith("}") && !body.includes("}{")) {
       body = `[${body}]`;
     }
 
-    // If it's multiple concatenated objects {...}{...}{...}
-    // Split between }{ and rebuild as JSON array
+    // Convert concatenated objects {...}{...}{...} → valid JSON array
     if (body.includes("}{")) {
       body = "[" + body.replace(/}\s*{/g, "},{") + "]";
     }
@@ -35,12 +35,12 @@ app.post("/filter-contacts", (req, res) => {
       return res.status(400).json({ error: "Expected an array or multiple JSON objects" });
     }
 
+    // Filter only contacts added in the last 30 days
     const recentContacts = contacts.filter(c => isWithinLast30Days(c.dateAdded));
 
-    return res.json({
-      count: recentContacts.length,
-      contacts: recentContacts,
-    });
+    // ✅ Only return the count
+    return res.json({ count: recentContacts.length });
+
   } catch (err) {
     console.error("❌ JSON parsing error:", err.message);
     return res.status(400).json({ error: "Invalid or malformed JSON input" });
