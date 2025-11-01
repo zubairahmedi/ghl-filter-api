@@ -7,10 +7,16 @@ const router = express.Router();
  * - Array of objects
  * - Concatenated objects {...}{...}{...}
  * - Single object
+ * - Empty input (returns 0)
  * Returns: number only (plain text)
  */
 router.post("/appointments-count", (req, res) => {
   try {
+    // Handle empty or undefined body
+    if (!req.body || !req.body.trim()) {
+      return res.type("text/plain").send("0");
+    }
+
     let body = req.body.trim();
 
     // Handle single object → wrap in array
@@ -26,7 +32,7 @@ router.post("/appointments-count", (req, res) => {
     // Try to parse it
     const appointments = JSON.parse(body);
 
-    // Handle array or single object
+    // Count logic
     let count = 0;
     if (Array.isArray(appointments)) {
       count = appointments.length;
@@ -34,7 +40,6 @@ router.post("/appointments-count", (req, res) => {
       count = 1;
     }
 
-    // ✅ Return plain count only
     res.type("text/plain").send(String(count));
   } catch (err) {
     console.error("❌ JSON parsing error:", err.message);
