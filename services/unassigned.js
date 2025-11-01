@@ -10,26 +10,28 @@ router.post("/unassigned-count", async (req, res) => {
 
     let calendars;
 
-    // 🧩 Handle both JSON (parsed) and raw string (Make raw text)
+    // 🧩 Handle both raw text and parsed JSON
     if (typeof req.body === "string") {
       let body = req.body.trim();
-      if (!body) return res.type("text/plain").send("0");
 
-      if (body.startsWith("{") && !body.includes("}{")) body = `[${body}]`;
-      if (body.includes("}{")) body = "[" + body.replace(/}\s*{/g, "},{") + "]";
+      // Some Make setups send multiple objects glued together — fix that
+      if (body.startsWith("{") && body.includes("},{")) {
+        body = "[" + body.replace(/}\s*,?\s*{/g, "},{") + "]";
+      } else if (body.startsWith("{") && body.endsWith("}")) {
+        body = "[" + body + "]";
+      }
+
       calendars = JSON.parse(body);
+    } else if (typeof req.body === "object") {
+      calendars = Array.isArray(req.body) ? req.body : [req.body];
     } else {
-      calendars = req.body;
+      return res.status(400).send("Invalid body");
     }
-
-    if (!Array.isArray(calendars)) return res.status(400).send("0");
 
     const end = Date.now();
     const start = end - 30 * 24 * 60 * 60 * 1000;
-
     let totalUnassigned = 0;
 
-    // Sequential (safe for Render)
     for (const cal of calendars) {
       const { locationId, id: calendarId } = cal;
       if (!calendarId || !locationId) continue;
@@ -48,23 +50,19 @@ router.post("/unassigned-count", async (req, res) => {
         );
 
         if (data?.events?.length) {
-          const unassigned = data.events.filter(
+          totalUnassigned += data.events.filter(
             e => !e.assignedUserId
           ).length;
-          totalUnassigned += unassigned;
         }
       } catch (err) {
-        console.warn(
-          `⚠️ Error fetching ${calendarId}:`,
-          err.response?.status || err.message
-        );
+        console.warn(`⚠️ Calendar ${calendarId}:`, err.message);
       }
     }
 
     res.type("text/plain").send(String(totalUnassigned));
   } catch (err) {
     console.error("❌ Error:", err.message);
-    res.type("text/plain").status(500).send("0");
+    res.status(500).send("0");
   }
 });
 
