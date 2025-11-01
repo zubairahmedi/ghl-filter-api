@@ -1,0 +1,13 @@
+{
+  "name": "ghl-filter-api",
+  "version": "1.0.0",
+  "description": "API to filter GHL contacts from the last 30 days",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
