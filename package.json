@@ -1,13 +1,14 @@
 {
   "name": "ghl-filter-api",
   "version": "1.0.0",
-  "description": "API to filter GHL contacts from the last 30 days",
+  "description": "API to filter GHL contacts and count appointments",
   "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "axios": "^1.7.2"
   }
 }
